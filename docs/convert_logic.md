@@ -111,11 +111,11 @@ body部がjsonの場合など、json変換などが必要となる。
 動作環境がproxy配下に存在する場合は、環境変数`http_proxy`の設定が必要
 * windowsの場合
 ```
-set http_proxy=web-proxy.jp.hpecorp.net:8080
-set https_proxy=web-proxy.jp.hpecorp.net:8080
+set http_proxy=
+set https_proxy=
 ```
 * linux,macの場合
 ```
-export http_proxy=web-proxy.jp.hpecorp.net:8080
-export https_proxy=web-proxy.jp.hpecorp.net:8080
+export http_proxy=
+export https_proxy=
 ```
