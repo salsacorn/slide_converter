@@ -1,0 +1,16 @@
+@echo off
+
+if defined GOVENV_ENABLE (
+SET "PROMPT=%GOVENV_OLD_PROMPT%"
+SET "PATH=%GOVENV_OLD_PATH%"
+
+SET GOVENV_ENABLE=
+SET GOVENV_PROJECT=
+SET GOVENV_MANAGEMENT_DIR=
+SET GOVENV_DATA_DIR=
+
+SET GOROOT=
+SET GOPATH=
+) else (
+echo Virtual environment is not activated.
+)
