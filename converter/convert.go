@@ -3,44 +3,90 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
 
-	shellwords "github.com/mattn/go-shellwords"
+	"rsc.io/pdf"
 )
 
-func _rename_to_pdf(filename string) error {
-	cmd := "mv " + filename + " " + filename + ".pdf"
-	c, err := shellwords.Parse(cmd)
-	exec.Command(c[0]).Output()
-	if err != nil {
-		return err
+func changeExtName(filename string, extention string) string {
+	pos := strings.LastIndex(filename, ".")
+	changedName := filename
+	if pos == -1 {
+		changedName = filename + extention
+	} else {
+		if filename[pos:] != extention {
+			return ""
+		} else {
+			changedName = filename[:pos] + extention
+		}
 	}
-	return nil
+	return changedName
 }
 
-func _pdf_to_ppm(filename string) error {
-	cmd := "pdftoppm " + filename + " " + filename + ".ppm"
-	c, err := shellwords.Parse(cmd)
-	exec.Command(c[0]).Output()
-	if err != nil {
-		return err
+func RenametoPDF(filename string) (string, error) {
+	dst := changeExtName(filename, ".pdf")
+	if dst == "" {
+		return filename, nil
+	} else {
+		_, err := exec.Command("mv", filename, dst).CombinedOutput()
+		if err != nil {
+			return "", errors.New("Can't move " + filename + " to " + dst)
+		}
 	}
-	return nil
+	return dst, nil
 }
 
-func _ppt_to_pdf(filename string) error {
-	cmd := "unoconv -f pdf -o " + filename + " " + filename + ".pdf"
-	c, err := shellwords.Parse(cmd)
-	exec.Command(c[0]).Output()
+func PDFtoPPM(filename string) string {
+	filename = changeExtName(filename, ".pdf")
+	re := regexp.MustCompile("(.*).pdf")
+	dst := re.ReplaceAllString(filename, "$1")
+	out, err := exec.Command("pdftoppm", filename, dst).CombinedOutput()
 	if err != nil {
-		return err
+		fmt.Println("Command Exec Error.")
 	}
-	return nil
+	fmt.Println("結果: %s", out)
+	return dst
 }
 
-func filetype_check(filename string) (string, error) {
+func PPTtoPDF(filename string) (string, error) {
+	dst := changeExtName(filename, ".pdf")
+	if dst == "" {
+		return "", errors.New("file with extention [.pdf] can't convert")
+	}
+	out, err := exec.Command("unoconv", "-f", "pdf", "-o", dst, filename).CombinedOutput()
+	if err != nil {
+		return "", errors.New("Can't convert " + filename + " to pdf")
+	}
+	fmt.Println("結果: %s", out)
+	return dst, nil
+}
+
+func PPTtoJPG(dir string) (error, []string) {
+	ppmfiles := dir + "*ppm"
+	err := exec.Command("mogrify", "-format", "jpg", ppmfiles).Run()
+	if err == nil {
+		files, _ := filepath.Glob(ppmfiles)
+		fmt.Println(files)
+		return err, files
+	}
+	return err, nil
+}
+
+func PDFtoTranscript(filename string) {
+	pdfFile := changeExtName(filename, ".pdf")
+	fmt.Println(pdfFile)
+	r, err := pdf.Open(pdfFile)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(r.NumPage())
+}
+
+func filetypeCheck(filename string) (string, error) {
 	out, _ := exec.Command("file", "--mime-type", "", filename).Output()
 	filetype := strings.Split(string(out), ":")[2]
 	pdf := "application/pdf"
@@ -57,28 +103,21 @@ func filetype_check(filename string) (string, error) {
 	}
 }
 
-func pdf_to_ppm() {
-	data_path := "data/download/"
-	files, err := ioutil.ReadDir(data_path)
+func convert(dir string, filename string) {
+	filepath := dir + filename
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		fmt.Println("file doesn't exist")
+	}
+	filetype, err := filetypeCheck(filepath)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
-	for _, file := range files {
-		filename := data_path + file.Name()
-		// pptx -> pdf変換
-		filetype, err := filetype_check(filename)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Printf(filetype)
-		/*
-			if err = os.Rename(filename, filename+".pptx"); err != nil {
-				fmt.Println(err)
-			}
-		*/
+	if filetype == "ppt" || filetype == "pptx" {
+		PPTtoPDF(filepath)
+	} else if filetype == "pdf" {
+		RenametoPDF(filepath)
 	}
-	out, _ := exec.Command("pwd").Output()
-	fmt.Printf("結果: %s", out)
-	out, _ = exec.Command("ls", "data/download/").Output()
-	fmt.Printf("結果: %s", out)
+	PDFtoPPM(filepath)
+	PPTtoJPG(dir)
+	PDFtoTranscript(filepath)
 }
