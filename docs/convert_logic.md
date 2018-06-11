@@ -57,30 +57,34 @@ sequenceDiagram
 * 該当メッセージの削除: aws api removeMessage()
 * sqsメッセージ削除: aws api
 
-### クラス図
-
-![](images/models.png?0.5840648072728125 )  
-
 ### データ設計
-
 
 #### DB
 
-
 ##### テーブル定義
+* slides
+(操作対象のカラムのみ記載)
 
-
-|DB|description|
+|column_name|description|
 |---|---|
-|||
+|convert_status|スライド変換スタータス。0(未変換),100(変換済み),-1(エラー)|
+|num_of_pages|スライドのページ数|
+|extention|スライドの拡張子(pdf,pptx,ppt)|
 
 ##### ER図
 
-
 ![](images/slidehub_er.svg?0.4463565704364756 )  
 
-#### messsage
+#### S3
 
+##### bucket一覧
+
+|bucket_name|description|
+|---|---|
+|slidehub-slides01|アップロードされた、スライドデータ(pdf,ppt,pptx)を保管|
+|slidehub-images01|スライド変換処理で生成された、画像(jpg)、サムネイル(大/小)、画像リスト(json)、transcript(要約テキスト)を保管|
+
+#### messsage
 
 |parameter|description|
 |---|---|
@@ -122,7 +126,6 @@ sequenceDiagram
 
 ### tips
 
-
 #### 各種変換ロジックについて
 
 作者のブログに各種変換ロジックについての詳細の記載がある。
@@ -158,7 +161,7 @@ openofficのpdf変換機能を利用して変換する。
  yum install ipa-gothic-fonts ipa-pgothic-fonts
  ```
 
-* 変換処理
+* コマンド
  ```sh
  export DISPLAY=:1.0
  Xvfb :1 &
@@ -179,24 +182,46 @@ yum -y install epel-release
 yum -y install xpdf
 ```
 
-* 変換処理
+* コマンド
 ```
 pdftoppm #{file} slide
 ```
 
 ##### ppm -> jpg変換
-
+* 各スライドを画像に変換
+* ファイル名は`slide-ページ番号.jpg`
+* コマンド
 ```
 mogrify -format jpg slide*.ppm
 ```
+* upload対象
+
+##### json生成
+* 各スライドの画像ファイルパスのリストをjson形式で作成
+* ファイル名は`list.jpg`
+* sample
+  ```
+  ["703ac60692fb2b0b3eb086ad618f01bf/slide-1.jpg","703ac60692fb2b0b3eb086ad618f01bf/slide-2.jpg"]
+  ````
+* upload対象
 
 ##### jpg -> thumbnail変換
-* 先頭ページを通常細部のthumbnailとして保管
+* 先頭ページを通常サイズのthumbnailとして保管
+  * ファイル名は`thumbnail.jpg`
 * 全てのページを小さいサイズのthumbnailとして保管
+  * 画像ファイル名は「slide-ページ番号-small.jpg」
+* upload対象
 
 ##### pdf -> transcript生成
 * ページ毎のpdf内の文字列を抽出する
+* ファイル名は`transcript.txt`
+* コマンド
 
+```sh
+pdftotext {pdffile名} -f {変換開始ページ} -l {変換終了ページ} - > {出力ファイル名}
+```
+
+* upload対象
 
 #### golang sqsの操作について
 
