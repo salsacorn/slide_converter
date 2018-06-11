@@ -3,8 +3,8 @@ package main
 const dir = "data/download/"
 
 func main() {
-	dirname := dir + "tmp2/"
-	filename := "tmp2"
+	dirname := dir + "tmp1/"
+	filename := "tmp1.pdf"
 	convert(dirname, filename)
 	//sqs_listqueus()
 	//createQueues()
